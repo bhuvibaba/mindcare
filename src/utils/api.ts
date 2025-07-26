@@ -1,7 +1,7 @@
 import { EmotionAnalysis } from '../types';
 
 // OpenRouter API configuration
-const OPENROUTER_API_KEY = 'your-api-key-here'; // Replace with actual API key
+const OPENROUTER_API_KEY = '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';
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 // Send chat message to AI
@@ -11,35 +11,102 @@ export const sendChatMessage = async (
   emotion: string = 'neutral'
 ): Promise<string> => {
   try {
-    // For demo purposes, return a simulated response
-    // In production, this would make an actual API call to OpenRouter
-    const responses = {
-      en: [
-        "I understand you're going through a difficult time. It's completely normal to feel this way, and I'm here to support you.",
-        "Thank you for sharing that with me. Your feelings are valid, and it takes courage to express them.",
-        "I hear you, and I want you to know that you're not alone in this. Let's work through this together.",
-        "That sounds challenging. Remember that it's okay to take things one step at a time.",
-        "I appreciate you opening up to me. How are you feeling right now in this moment?"
-      ],
-      hi: [
-        "मैं समझ सकता हूं कि आप एक कठिन समय से गुजर रहे हैं। ऐसा महसूस करना बिल्कुल सामान्य है।",
-        "मुझसे यह साझा करने के लिए धन्यवाद। आपकी भावनाएं वैध हैं।",
-        "मैं आपकी बात सुन रहा हूं। आप इसमें अकेले नहीं हैं।"
-      ]
-    };
+    // Create system prompt based on language and detected emotion
+    const systemPrompt = getSystemPrompt(language, emotion);
+    
+    // Make actual API call to OpenRouter
+    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': window.location.origin,
+        'X-Title': 'MindCare AI Assistant'
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: message
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+        top_p: 0.9,
+        stream: false
+      })
+    });
 
-    const languageResponses = responses[language as keyof typeof responses] || responses.en;
-    const randomResponse = languageResponses[Math.floor(Math.random() * languageResponses.length)];
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-    return randomResponse;
+    const data = await response.json();
+    
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      return data.choices[0].message.content;
+    } else {
+      throw new Error('Invalid response format from API');
+    }
 
   } catch (error) {
     console.error('Error sending chat message:', error);
-    return "I'm here to listen and support you. Could you tell me more about how you're feeling?";
+    
+    // Fallback responses if API fails
+    const fallbackResponses = {
+      en: [
+        "I'm here to listen and support you. Could you tell me more about how you're feeling?",
+        "I understand you're reaching out for support. While I'm having some technical difficulties, I want you to know that your feelings are valid.",
+        "Thank you for sharing with me. Even though I'm experiencing some connection issues, I'm here to help you through this."
+      ],
+      hi: [
+        "मैं आपकी बात सुनने और आपका साथ देने के लिए यहां हूं। क्या आप मुझे बता सकते हैं कि आप कैसा महसूस कर रहे हैं?",
+        "मैं समझ सकता हूं कि आप सहारे की तलाश में हैं। आपकी भावनाएं वैध हैं।"
+      ]
+    };
+    
+    const responses = fallbackResponses[language as keyof typeof fallbackResponses] || fallbackResponses.en;
+    return responses[Math.floor(Math.random() * responses.length)];
   }
+};
+
+// Generate system prompt based on language and emotion
+const getSystemPrompt = (language: string, emotion: string): string => {
+  const basePrompt = {
+    en: `You are a compassionate AI mental health assistant for MindCare. You provide empathetic, supportive responses to users seeking mental wellness guidance. 
+
+Key guidelines:
+- Be warm, understanding, and non-judgmental
+- Provide practical coping strategies and emotional support
+- Encourage professional help when appropriate
+- Keep responses concise but meaningful (2-4 sentences)
+- Never provide medical diagnoses or replace professional therapy
+- Focus on emotional validation and practical wellness tips
+
+The user's current emotional state appears to be: ${emotion}
+
+Respond with empathy and provide appropriate support for their emotional state.`,
+
+    hi: `आप MindCare के लिए एक दयालु AI मानसिक स्वास्थ्य सहायक हैं। आप मानसिक कल्याण मार्गदर्शन चाहने वाले उपयोगकर्ताओं को सहानुभूतिपूर्ण, सहायक प्रतिक्रियाएं प्रदान करते हैं।
+
+मुख्य दिशानिर्देश:
+- गर्मजोशी, समझदारी और बिना जजमेंट के जवाब दें
+- व्यावहारिक मुकाबला रणनीतियां और भावनात्मक समर्थन प्रदान करें
+- जब उचित हो तो पेशेवर मदद को प्रोत्साहित करें
+- जवाब संक्षिप्त लेकिन अर्थपूर्ण रखें (2-4 वाक्य)
+- कभी भी चिकित्सा निदान न दें या पेशेवर थेरेपी की जगह न लें
+
+उपयोगकर्ता की वर्तमान भावनात्मक स्थिति: ${emotion}
+
+सहानुभूति के साथ जवाब दें और उनकी भावनात्मक स्थिति के लिए उचित समर्थन प्रदान करें।`
+  };
+
+  return basePrompt[language as keyof typeof basePrompt] || basePrompt.en;
 };
 
 // Analyze emotion from text
