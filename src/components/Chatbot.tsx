@@ -34,8 +34,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [currentEmotion, setCurrentEmotion] = useState<EmotionAnalysis | null>(null);
-  const [iframeError, setIframeError] = useState(false);
-  const [useBuiltInChat, setUseBuiltInChat] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -80,42 +78,11 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
       };
     }
 
-    // Check iframe connectivity
-    checkIframeConnectivity();
   }, [language]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  const checkIframeConnectivity = () => {
-    // Try to load the iframe and check for errors
-    const testFrame = document.createElement('iframe');
-    testFrame.src = 'https://mind-care-chatbot.vercel.app/chat';
-    testFrame.style.display = 'none';
-    
-    testFrame.onload = () => {
-      setIframeError(false);
-      document.body.removeChild(testFrame);
-    };
-    
-    testFrame.onerror = () => {
-      setIframeError(true);
-      setUseBuiltInChat(true);
-      document.body.removeChild(testFrame);
-    };
-    
-    // Timeout fallback
-    setTimeout(() => {
-      if (document.body.contains(testFrame)) {
-        setIframeError(true);
-        setUseBuiltInChat(true);
-        document.body.removeChild(testFrame);
-      }
-    }, 5000);
-    
-    document.body.appendChild(testFrame);
-  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -219,91 +186,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
     return colors[emotion as keyof typeof colors] || 'text-gray-400';
   };
 
-  const retryIframe = () => {
-    setIframeError(false);
-    setUseBuiltInChat(false);
-    checkIframeConnectivity();
-  };
-
-  // If iframe works and we're not using built-in chat, show iframe
-  if (!iframeError && !useBuiltInChat) {
-    return (
-      <div className="h-full flex flex-col bg-gradient-to-br from-blue-50 to-purple-50">
-        {/* Header */}
-        <div className="bg-white shadow-lg p-4 border-b border-blue-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                <Bot className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-800">AI Mental Wellness Assistant</h2>
-                <p className="text-sm text-gray-600">Advanced AI-powered mental health support</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setUseBuiltInChat(true)}
-                className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors text-sm"
-              >
-                Use Built-in Chat
-              </button>
-              <a
-                href="https://mind-care-chatbot.vercel.app/chat"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors text-sm"
-              >
-                <Maximize2 className="w-4 h-4" />
-                <span className="font-medium">Open in New Tab</span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Iframe Container */}
-        <div className="flex-1 relative overflow-hidden">
-          <iframe
-            src="https://mind-care-chatbot.vercel.app/chat"
-            className="w-full h-full border-0 bg-white"
-            title="AI Mental Wellness Assistant"
-            allow="microphone; camera; autoplay; fullscreen"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-microphone allow-downloads"
-            loading="lazy"
-            onError={() => {
-              setIframeError(true);
-              setUseBuiltInChat(true);
-            }}
-          />
-        </div>
-
-        {/* Info Section */}
-        <div className="bg-white border-t border-gray-200 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
-            <div className="flex items-center justify-center space-x-2 text-blue-600">
-              <Bot className="w-5 h-5" />
-              <span className="text-sm font-medium">AI-Powered Chat</span>
-            </div>
-            <div className="flex items-center justify-center space-x-2 text-purple-600">
-              <div className="w-5 h-5 bg-purple-500 rounded-full"></div>
-              <span className="text-sm font-medium">Mental Health Focus</span>
-            </div>
-            <div className="flex items-center justify-center space-x-2 text-green-600">
-              <div className="w-5 h-5 bg-green-500 rounded-full"></div>
-              <span className="text-sm font-medium">24/7 Available</span>
-            </div>
-            <div className="flex items-center justify-center space-x-2 text-orange-600">
-              <div className="w-5 h-5 bg-orange-500 rounded-full"></div>
-              <span className="text-sm font-medium">Secure & Private</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Built-in chat interface
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
       {/* Animated Background */}
@@ -327,15 +209,15 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
           </div>
           
           <div className="flex items-center space-x-2">
-            {iframeError && (
-              <button
-                onClick={retryIframe}
-                className="flex items-center space-x-2 px-4 py-2 bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-300 rounded-xl transition-colors text-sm backdrop-blur-sm border border-yellow-400/30"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>Retry External Chat</span>
-              </button>
-            )}
+            <a
+              href="https://mind-care-chatbot.vercel.app/chat"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center space-x-2 px-4 py-2 bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 rounded-xl transition-colors text-sm backdrop-blur-sm border border-cyan-400/30"
+            >
+              <Maximize2 className="w-4 h-4" />
+              <span>Open External Chat</span>
+            </a>
             <button
               onClick={() => setShowSettings(!showSettings)}
               className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors backdrop-blur-sm"
