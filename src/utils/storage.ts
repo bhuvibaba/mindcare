@@ -1,18 +1,7 @@
 import { User, JournalEntry, Session, Review } from '../types';
-import { neonStorage } from './neonStorage';
 
 // Local storage utilities
 export const storage = {
-  // Database connection test
-  testDatabaseConnection: async (): Promise<boolean> => {
-    try {
-      return await neonStorage.testConnection();
-    } catch (error) {
-      console.error('Database connection test failed:', error);
-      return false;
-    }
-  },
-
   // User data
   getUser: (): User | null => {
     const userData = localStorage.getItem('mindcare_user');
@@ -39,20 +28,6 @@ export const storage = {
     const entries = storage.getJournalEntries();
     entries.push(entry);
     localStorage.setItem('mindcare_journal', JSON.stringify(entries));
-    
-    // Also save to database if user is logged in
-    const user = storage.getUser();
-    if (user && user.id) {
-      neonStorage.createJournalEntry(
-        user.id, 
-        entry.content, 
-        entry.mood, 
-        entry.tags, 
-        entry.language
-      ).catch(error => {
-        console.error('Failed to sync journal entry to database:', error);
-      });
-    }
   },
 
   // Sessions
@@ -95,34 +70,6 @@ export const storage = {
 
   setLanguage: (language: string): void => {
     localStorage.setItem('mindcare_language', language);
-  },
-
-  // Database operations
-  async createDatabaseUser(name: string, email?: string): Promise<User | null> {
-    try {
-      return await neonStorage.createUser(name, email);
-    } catch (error) {
-      console.error('Error creating database user:', error);
-      return null;
-    }
-  },
-
-  async syncJournalEntries(userId: string): Promise<JournalEntry[]> {
-    try {
-      return await neonStorage.getJournalEntries(userId);
-    } catch (error) {
-      console.error('Error syncing journal entries:', error);
-      return [];
-    }
-  },
-
-  async syncMoodAnalytics(userId: string, days: number = 30) {
-    try {
-      return await neonStorage.getMoodAnalytics(userId, days);
-    } catch (error) {
-      console.error('Error syncing mood analytics:', error);
-      return [];
-    }
   }
 };
 
@@ -141,20 +88,4 @@ export const initializeUser = (): User => {
     storage.setUser(user);
   }
   return user;
-};
-
-// Initialize database connection on app start
-export const initializeDatabase = async (): Promise<boolean> => {
-  try {
-    const connected = await storage.testDatabaseConnection();
-    if (connected) {
-      console.log('✅ Neon database connected successfully');
-    } else {
-      console.log('⚠️ Database connection failed, using local storage only');
-    }
-    return connected;
-  } catch (error) {
-    console.error('Database initialization error:', error);
-    return false;
-  }
 };
