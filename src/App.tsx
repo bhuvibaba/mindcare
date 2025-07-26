@@ -10,8 +10,10 @@ import Mindfulness from './components/Mindfulness';
 import Settings from './components/Settings';
 import Wellness from './components/Wellness';
 import FloatingVoiceWidget from './components/FloatingVoiceWidget';
+import AuthModal from './components/AuthModal';
 import { User, Session } from './types';
-import { storage, initializeUser } from './utils/storage';
+import { storage, initializeUser, supabaseStorage } from './utils/storage';
+import { authUtils } from './utils/supabaseStorage';
 
 function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -21,59 +23,189 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [userName, setUserName] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Simulate premium loading experience
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Check if user has completed onboarding
-      const existingUser = storage.getUser();
-      if (!existingUser || existingUser.name === 'User') {
-        setShowOnboarding(true);
+    const initializeApp = async () => {
+      try {
+        // Check for Supabase session first
+        const { session } = await authUtils.getSession();
+        
+        if (session?.user) {
+          // User is authenticated with Supabase
+          setIsAuthenticated(true);
+          const profile = await supabaseStorage.profile.getProfile(session.user.id);
+          
+          if (profile) {
+            setUser(profile);
+            setLanguage(profile.language);
+          } else {
+            // Profile doesn't exist, show onboarding
+            setShowOnboarding(true);
+          }
+        } else {
+          // Check for local user (backward compatibility)
+          const localUser = storage.getUser();
+          if (localUser && localUser.name !== 'User') {
+            setUser(localUser);
+            setLanguage(localUser.language);
+            // Suggest signing up to sync data
+            setTimeout(() => {
+              if (confirm('Sign up to sync your data across devices and never lose your progress!')) {
+                setShowAuthModal(true);
+              }
+            }, 3000);
+          } else {
+            // New user, show auth modal
+            setShowAuthModal(true);
+          }
+        }
+        
+        setSessions(storage.getSessions());
+      } catch (error) {
+        console.error('Error initializing app:', error);
+        // Fallback to local storage
+        const initialUser = initializeUser();
+        setUser(initialUser);
+        setLanguage(storage.getLanguage());
+        setSessions(storage.getSessions());
+      } finally {
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 2000);
       }
-    }, 2000);
-    
-    // Initialize user and load data
-    const initialUser = initializeUser();
-    setUser(initialUser);
-    setLanguage(storage.getLanguage());
-    setSessions(storage.getSessions());
+    };
 
+    initializeApp();
+  }, []);
+
+  useEffect(() => {
     // Set up periodic coin updates
     const interval = setInterval(() => {
-      const currentUser = storage.getUser();
-      if (currentUser && user && currentUser.coins !== user.coins) {
-        setUser(currentUser);
+      if (isAuthenticated && user) {
+        // Refresh user profile from Supabase
+        supabaseStorage.profile.getProfile(user.id).then(profile => {
+          if (profile && profile.coins !== user.coins) {
+            setUser(profile);
+          }
+        });
+      } else {
+        const currentUser = storage.getUser();
+        if (currentUser && user && currentUser.coins !== user.coins) {
+          setUser(currentUser);
+        }
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [user?.coins]);
+  }, [user?.coins, isAuthenticated]);
 
-  const completeOnboarding = () => {
+  const handleAuthSuccess = async (authUser: any) => {
+    try {
+      setIsAuthenticated(true);
+      
+      // Get or create profile
+      let profile = await supabaseStorage.profile.getProfile(authUser.id);
+      
+      if (!profile) {
+        // Create new profile
+        await supabaseStorage.profile.updateProfile(authUser.id, {
+          id: authUser.id,
+          name: authUser.user_metadata?.name || 'User',
+          email: authUser.email || '',
+          language: 'en',
+          coins: 20,
+          joinDate: new Date()
+        });
+        
+        profile = await supabaseStorage.profile.getProfile(authUser.id);
+      }
+      
+      if (profile) {
+        setUser(profile);
+        setLanguage(profile.language);
+        
+        // Sync local data if exists
+        const localEntries = storage.getJournalEntries();
+        if (localEntries.length > 0) {
+          await supabaseStorage.syncLocalDataToSupabase(authUser.id);
+        }
+      }
+      
+      setShowAuthModal(false);
+    } catch (error) {
+      console.error('Error handling auth success:', error);
+    }
+  };
+
+  const completeOnboarding = async () => {
     if (!userName.trim()) {
       alert('Please enter your name');
       return;
     }
 
-    const updatedUser = {
-      ...user!,
-      name: userName.trim()
-    };
-    
-    setUser(updatedUser);
-    storage.setUser(updatedUser);
-    setShowOnboarding(false);
+    try {
+      if (isAuthenticated && user) {
+        // Update Supabase profile
+        await supabaseStorage.profile.updateProfile(user.id, {
+          ...user,
+          name: userName.trim()
+        });
+        
+        const updatedProfile = await supabaseStorage.profile.getProfile(user.id);
+        if (updatedProfile) {
+          setUser(updatedProfile);
+        }
+      } else {
+        // Update local user
+        const updatedUser = {
+          ...user!,
+          name: userName.trim()
+        };
+        
+        setUser(updatedUser);
+        storage.setUser(updatedUser);
+      }
+      
+      setShowOnboarding(false);
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      alert('Failed to save your information. Please try again.');
+    }
   };
 
   const handleLanguageChange = (newLanguage: string) => {
     setLanguage(newLanguage);
     storage.setLanguage(newLanguage);
-    if (user) {
+    
+    if (user && isAuthenticated) {
+      // Update Supabase profile
+      supabaseStorage.profile.updateProfile(user.id, {
+        ...user,
+        language: newLanguage
+      });
+    } else if (user) {
+      // Update local user
       const updatedUser = { ...user, language: newLanguage };
       setUser(updatedUser);
       storage.setUser(updatedUser);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      if (isAuthenticated) {
+        await authUtils.signOut();
+        setIsAuthenticated(false);
+      }
+      
+      // Clear local state
+      setUser(null);
+      setActiveSection('dashboard');
+      setShowAuthModal(true);
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
@@ -266,12 +398,28 @@ function App() {
       <Navigation 
         activeSection={activeSection} 
         onSectionChange={setActiveSection}
-        userCoins={user.coins}
+        userCoins={user?.coins || 0}
+        onSignOut={handleSignOut}
+        isAuthenticated={isAuthenticated}
       />
       <div className="flex-1 overflow-auto relative z-10">
         {renderActiveSection()}
       </div>
       <FloatingVoiceWidget />
+      
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => {
+          setShowAuthModal(false);
+          // If no user exists, create a local one as fallback
+          if (!user) {
+            const fallbackUser = initializeUser();
+            setUser(fallbackUser);
+          }
+        }}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }
