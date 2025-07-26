@@ -11,7 +11,7 @@ import Settings from './components/Settings';
 import Wellness from './components/Wellness';
 import FloatingVoiceWidget from './components/FloatingVoiceWidget';
 import { User, Session } from './types';
-import { storage, initializeUser } from './utils/storage';
+import { storage, initializeUser, initializeDatabase } from './utils/storage';
 
 function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -21,9 +21,14 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [userName, setUserName] = useState('');
+  const [databaseConnected, setDatabaseConnected] = useState(false);
 
   useEffect(() => {
-    const initializeApp = () => {
+    const initializeApp = async () => {
+      // Test database connection
+      const dbConnected = await initializeDatabase();
+      setDatabaseConnected(dbConnected);
+      
       const initialUser = initializeUser();
       setUser(initialUser);
       setLanguage(storage.getLanguage());

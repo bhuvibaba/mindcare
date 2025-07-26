@@ -16,12 +16,14 @@ interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   userCoins: number;
+  databaseConnected?: boolean;
 }
 
 const Navigation: React.FC<NavigationProps> = ({ 
   activeSection, 
   onSectionChange, 
-  userCoins
+  userCoins,
+  databaseConnected = false
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -62,10 +64,15 @@ const Navigation: React.FC<NavigationProps> = ({
           <div className="flex items-center space-x-2">
             <Coins className="w-6 h-6 text-yellow-400" />
             <span className="text-sm font-medium text-white">MindCoins</span>
+            {databaseConnected && (
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" title="Database connected"></div>
+            )}
           </div>
           <span className="text-xl font-bold text-yellow-400">{userCoins}</span>
         </div>
-        <p className="text-xs text-purple-200 mt-1">Earn coins through wellness activities</p>
+        <p className="text-xs text-purple-200 mt-1">
+          {databaseConnected ? 'Synced with cloud database' : 'Stored locally'}
+        </p>
       </div>
 
       {/* Navigation Items */}
