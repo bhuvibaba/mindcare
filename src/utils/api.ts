@@ -1,7 +1,7 @@
 import { EmotionAnalysis } from '../types';
 
 // OpenRouter API configuration
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = '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';
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 // Send chat message to AI
