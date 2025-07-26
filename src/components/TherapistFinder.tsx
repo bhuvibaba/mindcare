@@ -18,7 +18,7 @@ const TherapistFinder: React.FC = () => {
           </div>
           
           <a
-            href="https://v0-mind-care-assistant.vercel.app/therapist-finder"
+            href="https://mind-care-chatbot.vercel.app/therapist-finder"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center space-x-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors text-sm"
@@ -32,7 +32,7 @@ const TherapistFinder: React.FC = () => {
       {/* Iframe Container */}
       <div className="flex-1 relative overflow-hidden">
         <iframe
-          src="https://v0-mind-care-assistant.vercel.app/therapist-finder"
+          src="https://mind-care-chatbot.vercel.app/therapist-finder"
           className="w-full h-full border-0 bg-white"
           title="Therapist Finder"
           allow="geolocation; microphone; camera; autoplay; fullscreen"

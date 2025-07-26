@@ -91,7 +91,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
   const checkIframeConnectivity = () => {
     // Try to load the iframe and check for errors
     const testFrame = document.createElement('iframe');
-    testFrame.src = 'https://v0-mind-care-assistant.vercel.app/chat';
+    testFrame.src = 'https://mind-care-chatbot.vercel.app/chat';
     testFrame.style.display = 'none';
     
     testFrame.onload = () => {
@@ -250,7 +250,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
                 Use Built-in Chat
               </button>
               <a
-                href="https://v0-mind-care-assistant.vercel.app/chat"
+                href="https://mind-care-chatbot.vercel.app/chat"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center space-x-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors text-sm"
@@ -265,7 +265,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
         {/* Iframe Container */}
         <div className="flex-1 relative overflow-hidden">
           <iframe
-            src="https://v0-mind-care-assistant.vercel.app/chat"
+            src="https://mind-care-chatbot.vercel.app/chat"
             className="w-full h-full border-0 bg-white"
             title="AI Mental Wellness Assistant"
             allow="microphone; camera; autoplay; fullscreen"
