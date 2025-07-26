@@ -11,8 +11,11 @@ export const sendChatMessage = async (
   emotion: string = 'neutral'
 ): Promise<string> => {
   try {
+    console.log('Sending message to AI:', { message, language, emotion });
+    
     // Create system prompt based on language and detected emotion
     const systemPrompt = getSystemPrompt(language, emotion);
+    console.log('System prompt:', systemPrompt);
     
     // Make actual API call to OpenRouter
     const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -21,10 +24,11 @@ export const sendChatMessage = async (
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': window.location.origin,
-        'X-Title': 'MindCare AI Assistant'
+        'X-Title': 'MindCare AI Assistant',
+        'Origin': window.location.origin
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'anthropic/claude-3-haiku',
         messages: [
           {
             role: 'system',
@@ -37,18 +41,23 @@ export const sendChatMessage = async (
         ],
         max_tokens: 500,
         temperature: 0.7,
-        top_p: 0.9,
-        stream: false
+        top_p: 0.9
       })
     });
 
+    console.log('API Response status:', response.status);
+    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error:', response.status, errorText);
       throw new Error(`API request failed: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('API Response data:', data);
     
     if (data.choices && data.choices[0] && data.choices[0].message) {
+      console.log('AI Response:', data.choices[0].message.content);
       return data.choices[0].message.content;
     } else {
       throw new Error('Invalid response format from API');
@@ -60,13 +69,13 @@ export const sendChatMessage = async (
     // Fallback responses if API fails
     const fallbackResponses = {
       en: [
-        "I'm here to listen and support you. Could you tell me more about how you're feeling?",
-        "I understand you're reaching out for support. While I'm having some technical difficulties, I want you to know that your feelings are valid.",
-        "Thank you for sharing with me. Even though I'm experiencing some connection issues, I'm here to help you through this."
+        "I'm here to listen and support you. Could you tell me more about how you're feeling? (Note: I'm currently using a fallback response due to connection issues)",
+        "I understand you're reaching out for support. While I'm having some technical difficulties, I want you to know that your feelings are valid. How can I help you today?",
+        "Thank you for sharing with me. Even though I'm experiencing some connection issues, I'm here to help you through this. What's on your mind?"
       ],
       hi: [
-        "मैं आपकी बात सुनने और आपका साथ देने के लिए यहां हूं। क्या आप मुझे बता सकते हैं कि आप कैसा महसूस कर रहे हैं?",
-        "मैं समझ सकता हूं कि आप सहारे की तलाश में हैं। आपकी भावनाएं वैध हैं।"
+        "मैं आपकी बात सुनने और आपका साथ देने के लिए यहां हूं। क्या आप मुझे बता सकते हैं कि आप कैसा महसूस कर रहे हैं? (नोट: तकनीकी समस्या के कारण यह एक फॉलबैक रिस्पॉन्स है)",
+        "मैं समझ सकता हूं कि आप सहारे की तलाश में हैं। आपकी भावनाएं वैध हैं। आज मैं आपकी कैसे मदद कर सकता हूं?"
       ]
     };
     
@@ -111,16 +120,18 @@ Respond with empathy and provide appropriate support for their emotional state.`
 
 // Analyze emotion from text
 export const analyzeEmotion = (text: string): EmotionAnalysis => {
+  console.log('Analyzing emotion for text:', text);
+  
   // Simple emotion analysis based on keywords
   const emotionKeywords = {
-    happy: ['happy', 'joy', 'excited', 'great', 'wonderful', 'amazing', 'fantastic', 'good', 'smile', 'laugh'],
-    sad: ['sad', 'depressed', 'down', 'upset', 'cry', 'tears', 'lonely', 'hurt', 'pain', 'grief'],
-    angry: ['angry', 'mad', 'furious', 'rage', 'hate', 'annoyed', 'frustrated', 'irritated'],
-    anxious: ['anxious', 'worried', 'nervous', 'stress', 'panic', 'fear', 'scared', 'overwhelmed'],
-    calm: ['calm', 'peaceful', 'relaxed', 'serene', 'tranquil', 'content'],
-    confused: ['confused', 'lost', 'uncertain', 'unclear', 'puzzled', 'bewildered'],
-    hopeful: ['hopeful', 'optimistic', 'positive', 'confident', 'determined', 'motivated'],
-    lonely: ['lonely', 'alone', 'isolated', 'abandoned', 'disconnected']
+    happy: ['happy', 'joy', 'excited', 'great', 'wonderful', 'amazing', 'fantastic', 'good', 'smile', 'laugh', 'cheerful', 'delighted', 'pleased', 'glad', 'thrilled'],
+    sad: ['sad', 'depressed', 'down', 'upset', 'cry', 'tears', 'lonely', 'hurt', 'pain', 'grief', 'miserable', 'heartbroken', 'devastated', 'sorrowful', 'melancholy'],
+    angry: ['angry', 'mad', 'furious', 'rage', 'hate', 'annoyed', 'frustrated', 'irritated', 'livid', 'outraged', 'infuriated', 'enraged', 'bitter', 'resentful'],
+    anxious: ['anxious', 'worried', 'nervous', 'stress', 'panic', 'fear', 'scared', 'overwhelmed', 'tense', 'uneasy', 'restless', 'apprehensive', 'concerned', 'troubled'],
+    calm: ['calm', 'peaceful', 'relaxed', 'serene', 'tranquil', 'content', 'composed', 'balanced', 'centered', 'zen', 'mellow'],
+    confused: ['confused', 'lost', 'uncertain', 'unclear', 'puzzled', 'bewildered', 'perplexed', 'baffled', 'mixed up', 'disoriented'],
+    hopeful: ['hopeful', 'optimistic', 'positive', 'confident', 'determined', 'motivated', 'encouraged', 'inspired', 'upbeat', 'enthusiastic'],
+    lonely: ['lonely', 'alone', 'isolated', 'abandoned', 'disconnected', 'solitary', 'friendless', 'excluded', 'rejected', 'withdrawn']
   };
 
   const lowerText = text.toLowerCase();
@@ -140,12 +151,20 @@ export const analyzeEmotion = (text: string): EmotionAnalysis => {
 
   // Determine intensity based on confidence and text length
   let intensity: 'low' | 'medium' | 'high' = 'medium';
-  if (confidence < 0.6) intensity = 'low';
-  else if (confidence > 0.8) intensity = 'high';
+  if (confidence < 0.6 || maxMatches === 0) intensity = 'low';
+  else if (confidence > 0.8 || maxMatches >= 3) intensity = 'high';
 
   // Generate suggestions based on detected emotion
   const suggestions = getSuggestionsForEmotion(detectedEmotion);
 
+  const result = {
+    emotion: detectedEmotion,
+    confidence,
+    intensity,
+    suggestions
+  };
+  
+  console.log('Emotion analysis result:', result);
   return {
     emotion: detectedEmotion,
     confidence,

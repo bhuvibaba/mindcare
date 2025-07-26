@@ -92,6 +92,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
     const text = messageText || inputMessage.trim();
     if (!text || isLoading) return;
 
+    console.log('Sending message:', text);
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       content: text,
@@ -106,11 +107,15 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
 
     try {
       // Analyze emotion
+      console.log('Analyzing emotion...');
       const emotion = analyzeEmotion(text);
+      console.log('Emotion detected:', emotion);
       setCurrentEmotion(emotion);
 
       // Get AI response
+      console.log('Getting AI response...');
       const response = await sendChatMessage(text, language, emotion.emotion);
+      console.log('AI response received:', response);
       
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -125,6 +130,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
 
       // Auto-speak if enabled
       if (autoSpeak) {
+        console.log('Auto-speaking response...');
         setIsSpeaking(true);
         await speakTextWithEmotion(response, emotion.emotion, language);
         setIsSpeaking(false);
@@ -138,9 +144,10 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
 
     } catch (error) {
       console.error('Chat error:', error);
+      
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: "I'm having trouble connecting right now, but I'm still here to help. Could you try rephrasing your message?",
+        content: `I'm having trouble connecting to my AI service right now, but I'm still here to help. Could you try again? (Error: ${error instanceof Error ? error.message : 'Unknown error'})`,
         sender: 'bot',
         timestamp: new Date(),
         language
@@ -152,6 +159,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
   };
 
   const startListening = () => {
+    console.log('Starting voice recognition...');
     if (recognitionRef.current && !isListening) {
       setIsListening(true);
       recognitionRef.current.start();
@@ -159,6 +167,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
   };
 
   const stopListening = () => {
+    console.log('Stopping voice recognition...');
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
@@ -166,6 +175,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
   };
 
   const toggleSpeaking = () => {
+    console.log('Toggling speech...');
     if (isSpeaking) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
@@ -175,13 +185,14 @@ const Chatbot: React.FC<ChatbotProps> = ({ language, onLanguageChange }) => {
   const getEmotionColor = (emotion?: string) => {
     const colors = {
       happy: 'text-green-500',
-      sad: 'text-blue-500',
+      sad: 'text-blue-600',
       angry: 'text-red-500',
       anxious: 'text-yellow-500',
       calm: 'text-purple-500',
       confused: 'text-gray-500',
       hopeful: 'text-teal-500',
-      lonely: 'text-indigo-500'
+      lonely: 'text-indigo-500',
+      neutral: 'text-gray-400'
     };
     return colors[emotion as keyof typeof colors] || 'text-gray-400';
   };
