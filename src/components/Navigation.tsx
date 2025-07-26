@@ -9,25 +9,19 @@ import {
   Coins,
   Home,
   Mic,
-  TrendingUp,
-  LogOut,
-  User as UserIcon
+  TrendingUp
 } from 'lucide-react';
 
 interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   userCoins: number;
-  onSignOut: () => void;
-  isAuthenticated: boolean;
 }
 
 const Navigation: React.FC<NavigationProps> = ({ 
   activeSection, 
   onSectionChange, 
-  userCoins, 
-  onSignOut, 
-  isAuthenticated 
+  userCoins
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -71,15 +65,7 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
           <span className="text-xl font-bold text-yellow-400">{userCoins}</span>
         </div>
-        <div className="flex items-center justify-between mt-1">
-          <p className="text-xs text-purple-200">Earn coins through wellness activities</p>
-          {isAuthenticated && (
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              <span className="text-xs text-green-300">Synced</span>
-            </div>
-          )}
-        </div>
+        <p className="text-xs text-purple-200 mt-1">Earn coins through wellness activities</p>
       </div>
 
       {/* Navigation Items */}
@@ -105,39 +91,8 @@ const Navigation: React.FC<NavigationProps> = ({
         })}
       </nav>
 
-      {/* Account Section */}
-      <div className="mt-auto p-4 relative z-10">
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full flex items-center justify-center">
-                <UserIcon className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <div className="text-sm font-medium text-white">
-                  {isAuthenticated ? 'Signed In' : 'Guest Mode'}
-                </div>
-                <div className="text-xs text-purple-200">
-                  {isAuthenticated ? 'Data synced' : 'Local storage only'}
-                </div>
-              </div>
-            </div>
-            
-            {isAuthenticated && (
-              <button
-                onClick={onSignOut}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4 text-purple-300 group-hover:text-white" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Footer */}
-      <div className="p-4 text-center relative z-10">
+      <div className="mt-auto p-4 text-center relative z-10">
         <p className="text-xs text-gray-500">
           MindCare is a wellness support tool and does not provide clinical diagnosis.
         </p>

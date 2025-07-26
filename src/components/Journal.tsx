@@ -11,8 +11,7 @@ import {
   Tag
 } from 'lucide-react';
 import { JournalEntry } from '../types';
-import { storage, supabaseStorage } from '../utils/storage';
-import { authUtils } from '../utils/supabaseStorage';
+import { storage } from '../utils/storage';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -43,8 +42,6 @@ const Journal: React.FC = () => {
   const [selectedMood, setSelectedMood] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showNewEntry, setShowNewEntry] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const moods = [
     { id: 'happy', label: 'Happy', icon: Smile, color: 'text-green-500', value: 5 },
@@ -58,97 +55,39 @@ const Journal: React.FC = () => {
   ];
 
   useEffect(() => {
-    const initializeData = async () => {
-      setIsLoading(true);
-      try {
-        // Check if user is authenticated with Supabase
-        const { session } = await authUtils.getSession();
-        
-        if (session?.user) {
-          setCurrentUser(session.user);
-          // Load entries from Supabase
-          const supabaseEntries = await supabaseStorage.journal.getJournalEntries(session.user.id);
-          setEntries(supabaseEntries);
-          
-          // Sync any local entries to Supabase (for migration)
-          const localEntries = storage.getJournalEntries();
-          if (localEntries.length > 0) {
-            await supabaseStorage.syncLocalDataToSupabase(session.user.id);
-            // Reload entries after sync
-            const updatedEntries = await supabaseStorage.journal.getJournalEntries(session.user.id);
-            setEntries(updatedEntries);
-          }
-        } else {
-          // Fallback to local storage
-          setEntries(storage.getJournalEntries());
-        }
-      } catch (error) {
-        console.error('Error loading journal entries:', error);
-        // Fallback to local storage
-        setEntries(storage.getJournalEntries());
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeData();
+    setEntries(storage.getJournalEntries());
   }, []);
 
-  const saveEntry = async () => {
+  const saveEntry = () => {
     if (!currentEntry.trim() || !selectedMood) {
       alert('Please write something and select your mood');
       return;
     }
 
-    try {
-      const entry: Omit<JournalEntry, 'id'> = {
-        userId: currentUser?.id || storage.getUser()?.id || 'user',
-        date: new Date(),
-        content: currentEntry,
-        mood: selectedMood,
-        tags: selectedTags,
-        language: storage.getLanguage()
-      };
+    const entry: JournalEntry = {
+      id: Date.now().toString(),
+      userId: storage.getUser()?.id || 'user',
+      date: new Date(),
+      content: currentEntry,
+      mood: selectedMood,
+      tags: selectedTags,
+      language: storage.getLanguage()
+    };
 
-      let savedEntry: JournalEntry | null = null;
+    storage.addJournalEntry(entry);
+    setEntries([entry, ...entries]);
 
-      if (currentUser) {
-        // Save to Supabase
-        savedEntry = await supabaseStorage.journal.addJournalEntry(entry);
-        if (savedEntry) {
-          setEntries([savedEntry, ...entries]);
-          
-          // Award coins in Supabase
-          const profile = await supabaseStorage.profile.getProfile(currentUser.id);
-          if (profile) {
-            await supabaseStorage.profile.updateCoins(currentUser.id, profile.coins + 10);
-          }
-        }
-      } else {
-        // Fallback to local storage
-        const localEntry: JournalEntry = {
-          id: Date.now().toString(),
-          ...entry
-        };
-        storage.addJournalEntry(localEntry);
-        setEntries([localEntry, ...entries]);
-        
-        // Award coins locally
-        const user = storage.getUser();
-        if (user) {
-          storage.updateCoins(user.coins + 10);
-        }
-      }
-
-      // Reset form
-      setCurrentEntry('');
-      setSelectedMood('');
-      setSelectedTags([]);
-      setShowNewEntry(false);
-    } catch (error) {
-      console.error('Error saving journal entry:', error);
-      alert('Failed to save journal entry. Please try again.');
+    // Award coins
+    const user = storage.getUser();
+    if (user) {
+      storage.updateCoins(user.coins + 10);
     }
+
+    // Reset form
+    setCurrentEntry('');
+    setSelectedMood('');
+    setSelectedTags([]);
+    setShowNewEntry(false);
   };
 
   const getMoodTrend = () => {
@@ -443,12 +382,6 @@ const Journal: React.FC = () => {
       )}
 
       {/* Entries List */}
-      {isLoading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your journal entries...</p>
-        </div>
-      ) : (
       <div className="space-y-4">
         {entries.map((entry) => {
           const mood = moods.find(m => m.id === entry.mood);
@@ -505,7 +438,6 @@ const Journal: React.FC = () => {
           );
         })}
       </div>
-      )}
 
       {entries.length === 0 && (
         <div className="text-center py-12">

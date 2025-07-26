@@ -1,12 +1,9 @@
 import { User, JournalEntry, Session, Review } from '../types';
-import { supabase } from '../lib/supabase';
-import { authUtils, profileUtils, journalUtils } from './supabaseStorage';
 
 // Local storage utilities
 export const storage = {
   // User data
   getUser: (): User | null => {
-    // First try to get from localStorage for backward compatibility
     const userData = localStorage.getItem('mindcare_user');
     if (userData) {
       return JSON.parse(userData);
@@ -20,7 +17,6 @@ export const storage = {
 
   // Journal entries
   getJournalEntries: (): JournalEntry[] => {
-    // First try to get from localStorage for backward compatibility
     const entries = localStorage.getItem('mindcare_journal');
     if (entries) {
       return JSON.parse(entries);
@@ -77,50 +73,6 @@ export const storage = {
   }
 };
 
-// Supabase-powered storage utilities
-export const supabaseStorage = {
-  // User authentication and profile management
-  auth: authUtils,
-  profile: profileUtils,
-  journal: journalUtils,
-
-  // Initialize user session
-  initializeSession: async (): Promise<User | null> => {
-    try {
-      const { session } = await authUtils.getSession();
-      if (!session?.user) {
-        return null;
-      }
-
-      const profile = await profileUtils.getProfile(session.user.id);
-      return profile;
-    } catch (error) {
-      console.error('Error initializing session:', error);
-      return null;
-    }
-  },
-
-  // Sync local data to Supabase (for migration)
-  syncLocalDataToSupabase: async (userId: string) => {
-    try {
-      // Sync journal entries
-      const localEntries = storage.getJournalEntries();
-      for (const entry of localEntries) {
-        await journalUtils.addJournalEntry({
-          ...entry,
-          userId,
-        });
-      }
-
-      // Clear local storage after successful sync
-      localStorage.removeItem('mindcare_journal');
-      
-      console.log('Local data synced to Supabase successfully');
-    } catch (error) {
-      console.error('Error syncing local data to Supabase:', error);
-    }
-  },
-};
 // Initialize default user if none exists
 export const initializeUser = (): User => {
   let user = storage.getUser();
@@ -136,15 +88,4 @@ export const initializeUser = (): User => {
     storage.setUser(user);
   }
   return user;
-};
-
-// Initialize Supabase user session
-export const initializeSupabaseUser = async (): Promise<User | null> => {
-  try {
-    const user = await supabaseStorage.initializeSession();
-    return user;
-  } catch (error) {
-    console.error('Error initializing Supabase user:', error);
-    return null;
-  }
 };

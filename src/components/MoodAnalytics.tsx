@@ -29,8 +29,7 @@ import {
   Filler,
   RadialLinearScale,
 } from 'chart.js';
-import { storage, supabaseStorage } from '../utils/storage';
-import { authUtils, moodUtils } from '../utils/supabaseStorage';
+import { storage } from '../utils/storage';
 import { JournalEntry } from '../types';
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -52,9 +51,6 @@ const MoodAnalytics: React.FC = () => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter'>('week');
   const [selectedMood, setSelectedMood] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [moodAnalytics, setMoodAnalytics] = useState<any[]>([]);
 
   const moods = [
     { id: 'happy', label: 'Happy', icon: Smile, color: '#10B981', value: 5 },
@@ -63,55 +59,8 @@ const MoodAnalytics: React.FC = () => {
   ];
 
   useEffect(() => {
-    const initializeData = async () => {
-      setIsLoading(true);
-      try {
-        // Check if user is authenticated with Supabase
-        const { session } = await authUtils.getSession();
-        
-        if (session?.user) {
-          setCurrentUser(session.user);
-          
-          // Load journal entries from Supabase
-          const supabaseEntries = await supabaseStorage.journal.getJournalEntries(session.user.id);
-          setEntries(supabaseEntries);
-          
-          // Load mood analytics from Supabase
-          const analytics = await moodUtils.getMoodAnalytics(session.user.id, 90);
-          setMoodAnalytics(analytics);
-        } else {
-          // Fallback to local storage
-          setEntries(storage.getJournalEntries());
-        }
-      } catch (error) {
-        console.error('Error loading mood analytics:', error);
-        // Fallback to local storage
-        setEntries(storage.getJournalEntries());
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeData();
+    setEntries(storage.getJournalEntries());
   }, []);
-
-  // Reload data when time range changes
-  useEffect(() => {
-    const loadMoodTrends = async () => {
-      if (currentUser) {
-        try {
-          const trends = await moodUtils.getMoodTrends(currentUser.id, timeRange);
-          setMoodAnalytics(trends);
-        } catch (error) {
-          console.error('Error loading mood trends:', error);
-        }
-      }
-    };
-
-    if (currentUser) {
-      loadMoodTrends();
-    }
-  }, [timeRange, currentUser]);
 
   const getMoodValue = (mood: string): number => {
     const moodObj = moods.find(m => m.id === mood);
@@ -159,8 +108,7 @@ const MoodAnalytics: React.FC = () => {
   };
 
   const getMoodTrendData = () => {
-    // Use Supabase mood analytics if available, otherwise fall back to journal entries
-    const dataSource = currentUser && moodAnalytics.length > 0 ? moodAnalytics : getFilteredEntries();
+    const filteredEntries = getFilteredEntries();
     const { days } = getDateRange();
     
     const labels = [];
@@ -168,31 +116,15 @@ const MoodAnalytics: React.FC = () => {
     
     for (let i = days - 1; i >= 0; i--) {
       const date = subDays(new Date(), i);
+      const dayEntries = filteredEntries.filter(entry => 
+        format(new Date(entry.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+      );
       
-      if (currentUser && moodAnalytics.length > 0) {
-        // Use Supabase mood analytics
-        const dayAnalytics = moodAnalytics.filter(analytics => 
-          format(new Date(analytics.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-        );
-        
-        if (dayAnalytics.length > 0) {
-          const avgMood = dayAnalytics.reduce((sum, analytics) => sum + analytics.mood_score, 0) / dayAnalytics.length;
-          data.push(avgMood);
-        } else {
-          data.push(null);
-        }
+      if (dayEntries.length > 0) {
+        const avgMood = dayEntries.reduce((sum, entry) => sum + getMoodValue(entry.mood), 0) / dayEntries.length;
+        data.push(avgMood);
       } else {
-        // Fallback to journal entries
-        const dayEntries = dataSource.filter((entry: any) => 
-          format(new Date(entry.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-        );
-        
-        if (dayEntries.length > 0) {
-          const avgMood = dayEntries.reduce((sum: number, entry: any) => sum + getMoodValue(entry.mood), 0) / dayEntries.length;
-          data.push(avgMood);
-        } else {
-          data.push(null);
-        }
+        data.push(null);
       }
       
       labels.push(format(date, timeRange === 'week' ? 'EEE' : 'MMM dd'));
@@ -721,12 +653,6 @@ const MoodAnalytics: React.FC = () => {
       )}
 
       {/* Charts Grid */}
-      {isLoading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your mood analytics...</p>
-        </div>
-      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Mood Trend Chart */}
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
@@ -750,10 +676,8 @@ const MoodAnalytics: React.FC = () => {
           </div>
         </div>
       </div>
-      )}
 
       {/* Weekly Pattern */}
-      {!isLoading && (
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
           <Calendar className="w-5 h-5 mr-2 text-purple-500" />
@@ -763,10 +687,9 @@ const MoodAnalytics: React.FC = () => {
           <Bar data={getWeeklyPatternData()} options={barChartOptions} />
         </div>
       </div>
-      )}
 
       {/* Mood Recommendations */}
-      {!isLoading && insights && (
+      {insights && (
         <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-6 border border-purple-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
             <Brain className="w-5 h-5 mr-2 text-purple-600" />
@@ -809,7 +732,7 @@ const MoodAnalytics: React.FC = () => {
       )}
 
       {/* No Data State */}
-      {!isLoading && entries.length === 0 && (
+      {entries.length === 0 && (
         <div className="text-center py-12">
           <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-600 mb-2">No mood data available</h3>
