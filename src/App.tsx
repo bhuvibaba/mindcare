@@ -14,6 +14,7 @@ import AuthModal from './components/AuthModal';
 import { User, Session } from './types';
 import { storage, initializeUser, supabaseStorage } from './utils/storage';
 import { authUtils } from './utils/supabaseStorage';
+import { testSupabaseConnection } from './lib/supabase';
 
 function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -29,6 +30,10 @@ function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Test Supabase connection
+        const connectionTest = await testSupabaseConnection();
+        console.log('Supabase connection status:', connectionTest ? 'Connected' : 'Failed');
+        
         // Check for Supabase session first
         const { session } = await authUtils.getSession();
         
