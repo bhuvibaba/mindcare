@@ -3,6 +3,7 @@ import Navigation from './components/Navigation';
 import AuthModal from './components/AuthModal';
 import Dashboard from './components/Dashboard';
 import Chatbot from './components/Chatbot';
+import ChatAssistant from './components/ChatAssistant';
 import VoiceAssistant from './components/VoiceAssistant';
 import TherapistFinder from './components/TherapistFinder';
 import Journal from './components/Journal';
@@ -85,6 +86,8 @@ function App() {
         return user ? <Dashboard user={user} sessions={sessions} /> : null;
       case 'chatbot':
         return <Chatbot language={language} onLanguageChange={handleLanguageChange} />;
+      case 'chat-assistant':
+        return <ChatAssistant />;
       case 'therapists':
         return <TherapistFinder />;
       case 'journal':

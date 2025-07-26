@@ -10,7 +10,8 @@ import {
   Home,
   TrendingUp,
   LogOut,
-  User
+  User,
+  Bot
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -29,6 +30,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'chatbot', label: 'AI Assistant', icon: MessageCircle },
+    { id: 'chat-assistant', label: 'Chat Assistant', icon: Bot },
     { id: 'therapists', label: 'Find Therapist', icon: Users },
     { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'mood-analytics', label: 'Mood Analytics', icon: TrendingUp },
