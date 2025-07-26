@@ -1,5 +1,40 @@
 import { User, JournalEntry, Session, Review } from '../types';
 
+// Mock authentication utilities
+export const mockAuth = {
+  isLoggedIn: (): boolean => {
+    return localStorage.getItem('mindcare_auth_token') !== null;
+  },
+
+  login: (email: string, name: string): void => {
+    const authToken = btoa(`${email}:${Date.now()}`); // Simple mock token
+    localStorage.setItem('mindcare_auth_token', authToken);
+    localStorage.setItem('mindcare_auth_email', email);
+    
+    // Create or update user profile
+    const existingUser = storage.getUser();
+    const user: User = {
+      id: existingUser?.id || Date.now().toString(),
+      name: name,
+      email: email,
+      language: existingUser?.language || 'en',
+      coins: existingUser?.coins || 20,
+      joinDate: existingUser?.joinDate || new Date()
+    };
+    storage.setUser(user);
+  },
+
+  logout: (): void => {
+    localStorage.removeItem('mindcare_auth_token');
+    localStorage.removeItem('mindcare_auth_email');
+    // Keep user data but mark as logged out
+  },
+
+  getCurrentUserEmail: (): string | null => {
+    return localStorage.getItem('mindcare_auth_email');
+  }
+};
+
 // Local storage utilities
 export const storage = {
   // User data

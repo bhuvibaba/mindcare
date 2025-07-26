@@ -8,20 +8,23 @@ import {
   Settings,
   Coins,
   Home,
-  Mic,
-  TrendingUp
+  TrendingUp,
+  LogOut,
+  User
 } from 'lucide-react';
 
 interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   userCoins: number;
+  onLogout: () => void;
 }
 
 const Navigation: React.FC<NavigationProps> = ({ 
   activeSection, 
   onSectionChange, 
-  userCoins
+  userCoins,
+  onLogout
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -92,7 +95,16 @@ const Navigation: React.FC<NavigationProps> = ({
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto p-4 text-center relative z-10">
+      <div className="mt-auto p-4 relative z-10">
+        {/* Logout Button */}
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center space-x-3 px-5 py-3 rounded-xl mb-4 transition-all duration-300 text-red-300 hover:bg-red-500/20 hover:text-red-200 backdrop-blur-sm border border-red-500/20 hover:border-red-400/40"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="font-medium text-sm">Sign Out</span>
+        </button>
+        
         <p className="text-xs text-gray-500">
           MindCare is a wellness support tool and does not provide clinical diagnosis.
         </p>

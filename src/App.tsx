@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navigation from './components/Navigation';
+import AuthModal from './components/AuthModal';
 import Dashboard from './components/Dashboard';
 import Chatbot from './components/Chatbot';
 import VoiceAssistant from './components/VoiceAssistant';
@@ -11,7 +12,7 @@ import Settings from './components/Settings';
 import Wellness from './components/Wellness';
 import FloatingVoiceWidget from './components/FloatingVoiceWidget';
 import { User, Session } from './types';
-import { storage, initializeUser } from './utils/storage';
+import { storage, initializeUser, mockAuth } from './utils/storage';
 
 function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -19,20 +20,22 @@ function App() {
   const [language, setLanguage] = useState('en');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [userName, setUserName] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const initialUser = initializeUser();
-    setUser(initialUser);
-    setLanguage(storage.getLanguage());
-    setSessions(storage.getSessions());
+    // Check if user is logged in
+    const loggedIn = mockAuth.isLoggedIn();
+    setIsAuthenticated(loggedIn);
     
-    // Show onboarding if user hasn't set a custom name
-    if (initialUser.name === 'User') {
-      setShowOnboarding(true);
+    if (loggedIn) {
+      const initialUser = initializeUser();
+      setUser(initialUser);
     }
     
+    setLanguage(storage.getLanguage());
+    setSessions(storage.getSessions());
+
     setTimeout(() => {
       setIsLoading(false);
     }, 2000);
@@ -50,20 +53,19 @@ function App() {
     return () => clearInterval(interval);
   }, [user?.coins]);
 
-  const completeOnboarding = () => {
-    if (!userName.trim()) {
-      alert('Please enter your name');
-      return;
-    }
+  const handleLogin = (email: string, name: string) => {
+    mockAuth.login(email, name);
+    setIsAuthenticated(true);
+    const user = storage.getUser();
+    setUser(user);
+    setShowAuthModal(false);
+  };
 
-    const updatedUser = {
-      ...user!,
-      name: userName.trim()
-    };
-    
-    setUser(updatedUser);
-    storage.setUser(updatedUser);
-    setShowOnboarding(false);
+  const handleLogout = () => {
+    mockAuth.logout();
+    setIsAuthenticated(false);
+    setUser(null);
+    setActiveSection('dashboard');
   };
 
   const handleLanguageChange = (newLanguage: string) => {
@@ -100,23 +102,75 @@ function App() {
     }
   };
 
-  if (!user) {
+  // Show authentication modal if not logged in and loading is complete
+  if (!isLoading && !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-        <div className="text-center">
-          <div className="w-24 h-24 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-6 mx-auto animate-spin">
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center">
-              <span className="text-3xl">🧠</span>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+          <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+        </div>
+
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
+          <div className="text-center max-w-4xl mx-auto">
+            {/* Logo */}
+            <div className="w-32 h-32 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
+              <span className="text-6xl">🧠</span>
             </div>
-          </div>
-          <h2 className="text-3xl font-bold text-white mb-2">MindCare</h2>
-          <p className="text-xl text-purple-200">Initializing AI-Powered Mental Wellness...</p>
-          <div className="mt-6 flex justify-center">
-            <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full animate-pulse"></div>
+            
+            {/* Hero Text */}
+            <h1 className="text-7xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-6">
+              MindCare
+            </h1>
+            <p className="text-3xl text-purple-200 mb-4">AI-Powered Mental Wellness Platform</p>
+            <p className="text-xl text-purple-300 mb-12 max-w-2xl mx-auto leading-relaxed">
+              Your personal AI companion for mental health support, mood tracking, mindfulness, and connecting with professional therapists.
+            </p>
+            
+            {/* CTA Button */}
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white px-12 py-5 rounded-2xl font-bold text-xl transition-all shadow-2xl hover:shadow-3xl transform hover:scale-105"
+            >
+              Start Your Wellness Journey ✨
+            </button>
+            
+            {/* Features Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+                <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center mx-auto mb-6">
+                  <span className="text-3xl">🤖</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">AI Assistant</h3>
+                <p className="text-purple-200 leading-relaxed">24/7 mental health support with natural language understanding and emotional intelligence</p>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-6">
+                  <span className="text-3xl">📊</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">Mood Analytics</h3>
+                <p className="text-purple-200 leading-relaxed">Track your emotional journey with detailed analytics and personalized insights</p>
+              </div>
+              
+              <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
+                <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-6">
+                  <span className="text-3xl">🧘</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">Mindfulness</h3>
+                <p className="text-purple-200 leading-relaxed">Guided meditation, breathing exercises, and wellness tools for inner peace</p>
+              </div>
             </div>
           </div>
         </div>
+        
+        <AuthModal 
+          isOpen={showAuthModal} 
+          onClose={() => setShowAuthModal(false)}
+          onLogin={handleLogin}
+        />
       </div>
     );
   }
@@ -170,89 +224,12 @@ function App() {
     );
   }
 
-  // Onboarding Modal
-  if (showOnboarding) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
-        {/* Animated Background */}
-        <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-          <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-          <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
-        </div>
 
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-12 shadow-2xl border border-white/20 max-w-2xl w-full mx-4 relative z-10">
-          <div className="text-center">
-            {/* Welcome Icon */}
-            <div className="w-24 h-24 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
-              <span className="text-4xl">👋</span>
-            </div>
 
-            {/* Welcome Text */}
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
-              Welcome to MindCare!
-            </h1>
-            <p className="text-xl text-purple-200 mb-8 leading-relaxed">
-              Your AI-powered mental wellness companion is ready to support your journey. 
-              Let's start by getting to know you better.
-            </p>
 
-            {/* Name Input */}
-            <div className="mb-8">
-              <label className="block text-lg font-semibold text-white mb-4">
-                What would you like us to call you?
-              </label>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="Enter your preferred name..."
-                className="w-full px-6 py-4 bg-white/90 backdrop-blur-sm border border-white/50 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-500/50 focus:border-transparent text-gray-800 placeholder-gray-500 text-lg font-medium shadow-lg"
-                onKeyPress={(e) => e.key === 'Enter' && completeOnboarding()}
-                autoFocus
-              />
-            </div>
 
-            {/* Continue Button */}
-            <button
-              onClick={completeOnboarding}
-              className="bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:from-cyan-600 hover:via-purple-600 hover:to-pink-600 text-white px-12 py-4 rounded-2xl font-bold text-lg transition-all shadow-2xl hover:shadow-3xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              disabled={!userName.trim()}
-            >
-              Start My Wellness Journey ✨
-            </button>
 
-            {/* Features Preview */}
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                <div className="w-12 h-12 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🤖</span>
-                </div>
-                <h3 className="text-white font-semibold mb-2">AI Assistant</h3>
-                <p className="text-purple-200 text-sm">24/7 mental health support</p>
-              </div>
-              
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">📊</span>
-                </div>
-                <h3 className="text-white font-semibold mb-2">Mood Analytics</h3>
-                <p className="text-purple-200 text-sm">Track your emotional journey</p>
-              </div>
-              
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🧘</span>
-                </div>
-                <h3 className="text-white font-semibold mb-2">Mindfulness</h3>
-                <p className="text-purple-200 text-sm">Meditation & breathing exercises</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!user) return null;
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 relative overflow-hidden">
@@ -267,11 +244,17 @@ function App() {
         activeSection={activeSection} 
         onSectionChange={setActiveSection}
         userCoins={user?.coins || 0}
+        onLogout={handleLogout}
       />
       <div className="flex-1 overflow-auto relative z-10">
         {renderActiveSection()}
       </div>
       <FloatingVoiceWidget />
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        onLogin={handleLogin}
+      />
     </div>
   );
 }
